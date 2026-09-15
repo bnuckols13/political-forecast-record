@@ -1,6 +1,69 @@
-# The journal deliberately needs none of these. It is stdlib-only so that no
-# dependency can break the one thing that must run every day.
-pandas>=2.0
-numpy>=1.24
-pytest>=8.0
-requests>=2.31
+# Verified 2026-09-15 with `pip install --dry-run --only-binary=:all:` on this box
+# (Python 3.12.10, pip 26.1.2): 64 packages, zero non-wheel resolutions. No C or
+# C++ toolchain is needed anywhere in this set, including the transitive closure.
+#
+# NOTE: journal/record.py and venues/manifold.py deliberately need NONE of this.
+# The daily record path is stdlib-only so that no dependency can break the one
+# thing that must run every day.
+
+# --- numerics ---
+numpy>=2.5,<3
+scipy>=1.18,<2
+pandas>=3.0,<4          # 3.0 is breaking: Copy-on-Write is mandatory, datetime
+                        # parsing infers microsecond not nanosecond, and the
+                        # M/Q/Y offset aliases are gone in favour of ME/QE/YE.
+pyarrow>=25.0,<26
+
+# --- scoring, calibration, stats ---
+scoringrules>=0.11,<0.12   # Brier / log / RPS / CRPS from one API.
+                           # The Murphy decomposition is NOT in any maintained
+                           # package: properscoring is archived (last release
+                           # 2015), scoringrules has no decomposition, and the
+                           # torchmetrics issue is still open. We hand-roll it,
+                           # which is right anyway since the binning choice is a
+                           # modelling decision we have to defend in writing.
+scikit-learn>=1.9,<2       # calibration_curve(strategy="quantile"),
+                           # CalibratedClassifierCV(method="sigmoid").
+                           # NOT netcal: it requires torch + pyro-ppl + gpytorch
+                           # + tensorboard, ~2.5 GB to draw a reliability diagram.
+statsmodels>=0.15,<0.16    # HAC/Newey-West for Clark-West (F15), clustered SEs (F07)
+arch>=8.0,<9               # StationaryBootstrap, optimal_block_length (F07)
+matplotlib>=3.11,<4        # reliability diagrams
+
+# --- local analytics over the JSONL archive ---
+duckdb>=1.5,<2             # queries data/**/*.jsonl in place, no load step.
+                           # Never install with --pre; it publishes .dev builds.
+
+# --- HTTP / collection (write path and research loop only) ---
+requests>=2.34,<3          # not httpx: stalled since 2024-12, energy moved to
+                           # httpx2 under the pydantic org
+requests-cache>=1.3,<2     # CachedSession makes a gather loop replayable while
+                           # iterating, so we stop re-hitting live endpoints
+tenacity>=9.1,<10          # application-layer retry (bad JSON, failed validation).
+                           # urllib3.Retry covers transport. NOT backoff: archived.
+
+# --- LLM research loop (F06) ---
+anthropic>=1.6,<2          # 1.x rides httpx2; messages.parse() gives typed output
+                           # natively. NOT instructor: instructor[anthropic] hard-
+                           # pins anthropic==0.93.0 and would silently downgrade
+                           # us across a major version.
+pydantic>=2.13,<3
+trafilatura>=2.2,<3        # main-content extraction, 0.943 recall / 0.906 precision
+                           # on its own benchmark. Recall is what matters: dropping
+                           # the paragraph containing a claim is a false negative,
+                           # which is the expensive error in verification.
+rapidfuzz>=3.14,<4         # cheap lexical gate before escalating a claim/source
+                           # pair to the model. NOT sentence-transformers: torch
+                           # alone is a 124 MB wheel for a question that is
+                           # "does this sentence appear in this document".
+
+# --- quality ---
+pytest>=9.1,<10
+pytest-cov>=7.1,<8
+pytest-regressions>=2.11,<3  # snapshot a scoring run, fail on drift
+hypothesis>=6.168,<7         # property tests for the scorer: Brier in [0,1],
+                             # monotonicity, and BS == REL - RES + UNC on
+                             # arbitrary input
+ruff>=0.16.7,<0.17           # 0.16 raised the default rule set from 59 to 413.
+                             # Every config guide written before 2026-08 is stale.
+mypy>=2.3,<3
