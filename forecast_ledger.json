@@ -1,0 +1,181 @@
+{
+  "schema": "forecast-edge/forecast_ledger@1",
+  "profile": "trading (inline, second project; extraction to ~/harness/templates/trading/ is now owed)",
+  "wip_limit": 1,
+  "build_unit_states": ["not_started", "active", "blocked", "passing"],
+  "thesis_states": ["hypothesis", "measured", "paper", "live", "retired"],
+  "rules": [
+    "A build unit reaches 'passing' ONLY when its verification command exits 0. The agent never self-declares done.",
+    "A thesis leaves 'measured' ONLY via an independent evaluator subagent scoring a forward-only record against a metric pre-registered before the result is seen.",
+    "No thesis reaches 'live' on an agent's say-so. That transition is a human decision with recorded evidence.",
+    "WIP=1 applies to build units: exactly one 'active' at a time.",
+    "No build unit may validate itself against an already-resolved question. Forward-only, always."
+  ],
+  "theses": [
+    {
+      "id": "S01",
+      "name": "calibrated-edge-over-market-price",
+      "state": "hypothesis",
+      "thesis": "On thin political markets (down-ballot races, low-liquidity process questions), a well-informed individual's probability estimate beats the market price's own Brier score, with positive resolution in the Murphy decomposition, by enough to survive fees and capital lock-up.",
+      "benchmarks": [
+        "The market price at forecast time, scored the same way on the same questions. This is the free and unarguable benchmark; beating it is the definition of edge."
+      ],
+      "pre_registered_metric": null,
+      "blocked_on": "F05 sets the minimum cluster count. The pre-registration is pinned only after F05 reports and before the holdout completes, so git ordering proves the bar preceded the result.",
+      "evidence": null,
+      "post_mortem": null
+    }
+  ],
+  "build_units": [
+    {
+      "id": "F01",
+      "priority": 1,
+      "kind": "infra",
+      "title": "Append-only hash-chained forecast journal",
+      "behavior": "Records a pre-resolution probability with the market price at forecast time, an event-cluster key, and a UTC stamp, appended to data/forecasts/<YYYY-MM>.jsonl and chained by sha256 to the prior record. A revision is a new append, never an edit. Writing a forecast for a market whose close time has passed raises. Probabilities of exactly 0 or 1 raise.",
+      "verification": "python -m journal.record --check && python -m pytest -q tests/test_journal.py",
+      "state": "active",
+      "evidence": null
+    },
+    {
+      "id": "F03",
+      "priority": 2,
+      "kind": "infra",
+      "title": "Manifold API client",
+      "behavior": "Reads open markets and their current prices, pulls resolutions for recorded forecasts, and places positions. Stdlib-only for the read path so the daily record cannot be broken by a dependency.",
+      "verification": "python -m venues.manifold --check",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F05",
+      "priority": 3,
+      "kind": "analysis",
+      "title": "Sufficiency pre-flight (KILL-GATE)",
+      "behavior": "Analytical table of how many resolved forecasts, clustered by correlated-event group, are needed to detect a real Brier edge at stated effect sizes. Requires no data. If the answer exceeds what a season can produce, the project stops and a refusal ADR is written instead of an apparatus.",
+      "verification": "python -m inference.sufficiency --preflight && python -m pytest -q tests/test_sufficiency.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F02",
+      "priority": 4,
+      "kind": "infra",
+      "title": "Brier scorer with Murphy decomposition",
+      "behavior": "Scores the journal against outcomes and against the market-price baseline, decomposing into calibration, resolution, and uncertainty, with a reliability diagram. Calibration alone is not skill: a model always returning the base rate is perfectly calibrated and has zero resolution.",
+      "verification": "python -m pytest -q tests/test_brier.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F14",
+      "priority": 5,
+      "kind": "infra",
+      "title": "Trial log and ladder discipline",
+      "behavior": "Records every configuration evaluated including abandoned ones, computes effective N for correlated trials as rho + (1-rho)*M, rounds reported scores to the ladder threshold eta, and records a new best only on an improvement exceeding eta. Costs an hour and is worthless if started late.",
+      "verification": "python -m pytest -q tests/test_trials.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F04",
+      "priority": 6,
+      "kind": "infra",
+      "title": "Resolution tracker",
+      "behavior": "Polls venues for resolutions of open forecasts and appends outcome records to data/resolutions/, joined to forecasts by id. Never mutates a forecast record.",
+      "verification": "python -m journal.reconcile --check",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F09",
+      "priority": 7,
+      "kind": "infra",
+      "title": "Position and disclosure log",
+      "behavior": "Append-only, publishable as written, current at the moment any related published piece goes out. Verifies that no prior entry changed. No --force flag exists.",
+      "verification": "python -m ops.disclosure --verify",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F06",
+      "priority": 8,
+      "kind": "infra",
+      "title": "Research loop with claim-level verification",
+      "behavior": "Decomposes research output into atomic claims, re-retrieves each cited source, and verifies the claim against the source text rather than checking that the link resolves. Prefers depth on few sources over breadth across many, because search depth degrades factual accuracy.",
+      "verification": "python -m pytest -q tests/test_verify.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F08",
+      "priority": 9,
+      "kind": "infra",
+      "title": "Base-rate book",
+      "behavior": "Reference classes for recurring question shapes: incumbent reelection rates, midterm seat change by presidential approval band, special-election swing as a leading indicator, confirmation and passage success rates. The outside view, consulted before the narrative.",
+      "verification": "python -m pytest -q tests/test_baserates.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F07",
+      "priority": 10,
+      "kind": "infra",
+      "title": "Event-clustered inference",
+      "behavior": "cluster_ttest and block_bootstrap over correlated-event groups with a pinned seed. Forecast-level input raises: N forecasts on one national environment is one observation, not N.",
+      "verification": "python -m pytest -q tests/test_robust_gate.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F15",
+      "priority": 11,
+      "kind": "infra",
+      "title": "Clark-West nested comparison",
+      "behavior": "One-sided MSPE-adjusted comparison against the market-price baseline. Required because a forecast is the market price plus an adjustment, and an unadjusted test on nested models almost never rejects even when the edge is real.",
+      "verification": "python -m pytest -q tests/test_nested.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F10",
+      "priority": 12,
+      "kind": "infra",
+      "title": "Market scanner",
+      "behavior": "Ranks open markets by the gap between the recorded estimate and the market price, weighted by liquidity and time to resolution.",
+      "verification": "python -m scan.edges --check",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F11",
+      "priority": 13,
+      "kind": "infra",
+      "title": "Correlated-race partial pooling model",
+      "behavior": "Partial pooling across races with heavy-tailed population priors and non-centered parameterization. Normal priors overshrink exactly the outliers an election model exists to catch. Never inverse-gamma on a variance parameter: it has no proper limiting posterior and silently forces complete pooling.",
+      "verification": "python -m pytest -q tests/test_pooling.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F12",
+      "priority": 14,
+      "kind": "infra",
+      "title": "Calibration-gated sizing",
+      "behavior": "Fractional Kelly on binary contracts, modelling capital lock-up to resolution. Raises on ungated input, on a scalar mean where a distribution is required, and on correlated positions with no correlation argument.",
+      "verification": "python -m pytest -q tests/test_sizing.py",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "F13",
+      "priority": 15,
+      "kind": "infra",
+      "title": "Kalshi client",
+      "behavior": "BLOCKED BY DESIGN until F12's gate passes with a recorded evaluator verdict. No real-money order path exists in this repo before then. Kalshi's legal status is also live litigation as of 2026-09, which is a sizing consideration rather than a blocker.",
+      "verification": "n/a - blocked by design; unblocking requires a human decision recorded in docs/evals/",
+      "state": "blocked",
+      "evidence": null
+    }
+  ]
+}

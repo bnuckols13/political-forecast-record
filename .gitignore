@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# THE PRIVATE JOURNAL IS NOT PUBLISHED.
+#
+# data/forecasts/ holds full forecast records: the question, the probability,
+# the market price and the reasoning. Publishing those while a market is open
+# hands a reader the live position, which is exactly what the commit-reveal
+# scheme exists to prevent.
+#
+# What IS published lives in public/: the commitment chain (digest + timestamp,
+# written at forecast time) and reveals (full records, written after the market
+# resolves). See README.md.
+#
+# The private journal is therefore local-only and needs its own backup. Losing
+# it does not invalidate the published commitments, but it does make every
+# sealed forecast permanently unrevealable. Back it up somewhere private.
+# ---------------------------------------------------------------------------
+data/forecasts/
+data/resolutions/
+
+# Secrets. No venue API key that can move money exists here until the live gate,
+# and never in a tracked file even then.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Regenerable market-price cache. The price that matters is the one embedded in
+# each forecast record at the moment it was made, not this.
+data/prices/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

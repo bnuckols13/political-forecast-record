@@ -1,0 +1,6 @@
+# init.sh runs under bash; CRLF would break it. Pin LF for scripts.
+*.sh    text eol=lf
+*.py    text eol=lf
+# The journal is a hash chain. Line-ending translation would break every hash.
+*.jsonl text eol=lf
+*.json  text eol=lf
