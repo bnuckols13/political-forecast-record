@@ -32,7 +32,7 @@
         "The market price at forecast time, scored the same way on the same questions. This is the free and unarguable benchmark; beating it is the definition of edge."
       ],
       "pre_registered_metric": null,
-      "blocked_on": "F05 sets the minimum cluster count. The pre-registration is pinned only after F05 reports and before the holdout completes, so git ordering proves the bar preceded the result.",
+      "blocked_on": "F05 has reported. The minimum is ~80 independent event clusters at a 10% edge, ~320 at 5%. Pre-registration is pinned once forecasting breadth makes one of those reachable, and before the holdout completes, so git ordering proves the bar came first.",
       "evidence": null,
       "post_mortem": null
     }
@@ -65,8 +65,8 @@
       "title": "Sufficiency pre-flight (KILL-GATE)",
       "behavior": "Analytical table of how many resolved forecasts, clustered by correlated-event group, are needed to detect a real Brier edge at stated effect sizes. Requires no data. If the answer exceeds what a season can produce, the project stops and a refusal ADR is written instead of an apparatus.",
       "verification": "python -m inference.sufficiency --preflight && python -m pytest -q tests/test_sufficiency.py",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": "30 tests green; --preflight exits 0. Derivation validated three ways: hand-computed values, the closed form (m-p)(m+p-2Y), and 200k-draw Monte Carlo agreeing with E[d]=e^2 and sd=2|e|sqrt(q(1-q)). VERDICT: S01 is testable but only at a 10%+ edge on genuinely thin markets, and only through breadth across unrelated clusters. The midterms are ~1 observation, not 400. See docs/decisions/0004."
     },
     {
       "id": "F02",
