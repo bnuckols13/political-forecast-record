@@ -195,6 +195,45 @@ def search_markets(term: str, limit: int = 50, **params: Any) -> list[Market]:
     return _markets_from(_get("/search-markets", query))
 
 
+def topic_markets(topic_slug: str, limit: int = 300) -> list[Market]:
+    """Every binary market under a topic, paging until the topic runs out.
+
+    The verified slug for the election dashboard is `elections`. Note that
+    `election`, `politics` and `world-elections` all return nothing, so the slug
+    is worth confirming rather than guessing.
+
+    Paging matters here more than it looks. A single call caps well below the
+    size of an active topic, and the markets that never appear on page one are
+    disproportionately the thin, low-attention ones. Those are precisely the
+    markets F05 says are the only testable population, so a client that reads one
+    page is systematically blind to the useful half of the topic.
+    """
+    collected: list[Market] = []
+    seen: set[str] = set()
+    offset = 0
+    page_size = 100
+
+    while len(collected) < limit:
+        payloads = _get(
+            "/search-markets",
+            {"topicSlug": topic_slug, "limit": page_size, "offset": offset, "term": ""},
+        )
+        if not isinstance(payloads, list) or not payloads:
+            break
+
+        fresh = [p for p in payloads if p.get("id") not in seen]
+        if not fresh:
+            break  # the endpoint is repeating itself; stop rather than loop
+        seen.update(p["id"] for p in fresh if p.get("id"))
+        collected.extend(_markets_from(fresh))
+
+        if len(payloads) < page_size:
+            break
+        offset += page_size
+
+    return collected[:limit]
+
+
 def get_market(market_id: str) -> Market:
     return Market.from_api(_get(f"/market/{market_id}"))
 
@@ -239,6 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--check", action="store_true", help="verify the API and shape")
     parser.add_argument("--search", help="search markets by term")
+    parser.add_argument("--topic", help="browse a topic slug, e.g. elections")
     parser.add_argument("--max-bettors", type=int, default=30, help="thin enough for a large edge")
     parser.add_argument("--min-bettors", type=int, default=5, help="thick enough that resolution is policed")
     parser.add_argument("--limit", type=int, default=50)
@@ -264,6 +304,17 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             return 0
 
+        if args.topic:
+            everything = topic_markets(args.topic, limit=max(args.limit, 300))
+            open_markets = forecastable(everything)
+            band = thin(open_markets, max_bettors=args.max_bettors, min_bettors=args.min_bettors)
+            print(f"topic {args.topic!r}: {len(everything)} binary, {len(open_markets)} open, "
+                  f"{len(band)} in the {args.min_bettors}-{args.max_bettors} bettor band\n")
+            for market in sorted(band, key=lambda m: m.bettors)[: args.limit]:
+                print(f"  {market.probability:>6.1%}  {market.bettors:>4} bettors  {market.question[:64]}")
+                print(f"          closes {market.closes_utc}  id={market.id}")
+            return 0
+
         if args.search:
             found = thin(forecastable(search_markets(args.search, limit=args.limit)),
                          max_bettors=args.max_bettors, min_bettors=args.min_bettors)
@@ -282,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"          closes {market.closes_utc}  id={market.id}")
             return 0
 
-        parser.error("pass --check or --search TERM")
+        parser.error("pass --check, --search TERM, or --topic SLUG")
     except ManifoldError as exc:
         print(f"FAIL: {exc}")
         return 1
