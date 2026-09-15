@@ -55,8 +55,8 @@
       "title": "Manifold API client",
       "behavior": "Reads open markets and their current prices, pulls resolutions for recorded forecasts, and places positions. Stdlib-only for the read path so the daily record cannot be broken by a dependency.",
       "verification": "python -m venues.manifold --check",
-      "state": "active",
-      "evidence": null
+      "state": "passing",
+      "evidence": "17 hermetic tests; `python -m venues.manifold --check` exits 0 against the live API (50 markets, 36 binary, 33 forecastable). Refuses non-BINARY markets rather than reading a None probability into the journal. Thinness is a BAND not a ceiling: F05 wants few bettors for detectable edge, but creators resolve their own markets and N/A claws back profits, so a floor guards resolution risk. Live search found 15 political markets in the 5-30 band. Manifold is mana-only since sweepcash ended March 2025; no money path."
     },
     {
       "id": "F05",
@@ -75,7 +75,7 @@
       "title": "Brier scorer with Murphy decomposition",
       "behavior": "Scores the journal against outcomes and against the market-price baseline, decomposing into calibration, resolution, and uncertainty, with a reliability diagram. Calibration alone is not skill: a model always returning the base rate is perfectly calibrated and has zero resolution.",
       "verification": "python -m pytest -q tests/test_brier.py",
-      "state": "not_started",
+      "state": "active",
       "evidence": null
     },
     {
